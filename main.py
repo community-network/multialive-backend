@@ -126,7 +126,6 @@ async def main(servers: list[str], group_id: str, empty_space: int):
             info.needed_players -= 1
             del unused_seeders[0]
 
-    print(used_seeders)
     await update_seeding(mainDb, group_id, used_seeders)
 
 
