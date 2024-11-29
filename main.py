@@ -4,6 +4,12 @@ import motor.motor_asyncio
 from motor.motor_asyncio import AsyncIOMotorCollection
 import aiohttp
 from dotenv import load_dotenv
+from quart import Quart
+from threading import Thread
+from hypercorn.config import Config
+from hypercorn.asyncio import serve
+
+while_is_running = True
 
 
 class ServerInfo:
@@ -78,12 +84,16 @@ async def update_seeding(
     )
 
 
-async def main(servers: list[str], group_id: str, empty_space: int):
-    load_dotenv()
-    mainDb = motor.motor_asyncio.AsyncIOMotorClient(
-        os.getenv("MONGO_DETAILS_STRING", None)
-    )
+async def get_seeding_groups(mainDb):
+    groups = []
+    serverManagerDB = mainDb.get_database("serverManager")
+    seeding_db: AsyncIOMotorCollection = serverManagerDB.get_collection("seeding")
+    async for group in seeding_db.find({"fillServers": {"$exists": True}}):
+        groups.append(group)
+    return groups
 
+
+async def update_server(mainDb, servers: list[str], group_id: str, empty_space: int):
     used_seeders = await gather_seeding(mainDb, group_id)
     server_infos: dict[str, ServerInfo] = {}
 
@@ -129,7 +139,50 @@ async def main(servers: list[str], group_id: str, empty_space: int):
     await update_seeding(mainDb, group_id, used_seeders)
 
 
+async def main(mainDb):
+    while True:
+        groups = await get_seeding_groups(mainDb)
+        for group in groups:
+            await update_server(
+                mainDb,
+                group.get("fillServers", []),
+                group.get("_id", ""),
+                group.get("emptySpace", 10),
+            )
+        await asyncio.sleep(30)
+
+
+def startBackgroundGetter():
+    load_dotenv()
+    mainDb = motor.motor_asyncio.AsyncIOMotorClient(
+        os.getenv("MONGO_DETAILS_STRING", None)
+    )
+    asyncio.run(main(mainDb))
+    global while_is_running
+    while_is_running = False
+
+
+app = Quart(__name__)
+
+
+@app.before_serving
+async def run_on_start():
+    thread = Thread(target=startBackgroundGetter)
+    thread.start()
+
+
+@app.route("/")
+def health_check():
+    global while_is_running
+    if while_is_running:
+        return {"status": "ok"}
+    else:
+        return {"status": "failed"}, 500
+
+
 if __name__ == "__main__":
-    empty_space = 10
-    servers = ["[BoB]#1 EU", "[BoB]#2 EU", "[BoB]#3 EU", "[BoB]#4 EU", "[BoB]#5 EU"]
-    asyncio.run(main(servers, "0fda8e4c-5be3-11eb-b1da-cd4ff7dab605", empty_space))
+    config = Config.from_mapping(
+        bind="0.0.0.0:80",
+        statsd_host="0.0.0.0:80",
+    )
+    asyncio.run(serve(app, config))
