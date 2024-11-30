@@ -69,7 +69,7 @@ async def gather_seeding(mainDb, group_id: str) -> dict[str, dict[str, str]]:
 
 async def update_seeding(
     mainDb, group_id: str, used_seeders: dict[str, dict[str, str]]
-):
+) -> None:
     serverManagerDB = mainDb.get_database("serverManager")
     seeding_db: AsyncIOMotorCollection = serverManagerDB.get_collection("seeding")
     await seeding_db.update_one(
@@ -77,7 +77,7 @@ async def update_seeding(
     )
 
 
-async def get_seeding_groups(mainDb):
+async def get_seeding_groups(mainDb) -> list[dict]:
     groups = []
     serverManagerDB = mainDb.get_database("serverManager")
     seeding_db: AsyncIOMotorCollection = serverManagerDB.get_collection("seeding")
@@ -86,7 +86,9 @@ async def get_seeding_groups(mainDb):
     return groups
 
 
-async def update_server(mainDb, servers: list[str], group_id: str, empty_space: int):
+async def update_server(
+    mainDb, servers: list[str], group_id: str, empty_space: int
+) -> tuple[dict[str, dict[str, str]], dict[str, dict[str, str | bool]]]:
     used_seeders = await gather_seeding(mainDb, group_id)
     server_infos: dict[str, ServerInfo] = {}
 
