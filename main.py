@@ -162,27 +162,25 @@ def startBackgroundGetter():
     while_is_running = False
 
 
-app = Quart(__name__)
-
-
-@app.before_serving
-async def run_on_start():
-    thread = Thread(target=startBackgroundGetter)
-    thread.start()
-
-
-@app.route("/")
-def health_check():
-    global while_is_running
-    if while_is_running:
-        return {"status": "ok"}
-    else:
-        return {"status": "failed"}, 500
-
-
 if __name__ == "__main__":
-    config = Config.from_mapping(
-        bind="0.0.0.0:80",
-        statsd_host="0.0.0.0:80",
-    )
-    asyncio.run(serve(app, config))
+    app = Quart(__name__)
+
+    @app.before_serving
+    async def run_on_start():
+        thread = Thread(target=startBackgroundGetter)
+        thread.start()
+
+    @app.route("/")
+    def health_check():
+        global while_is_running
+        if while_is_running:
+            return {"status": "ok"}
+        else:
+            return {"status": "failed"}, 500
+
+    if __name__ == "__main__":
+        config = Config.from_mapping(
+            bind="0.0.0.0:80",
+            statsd_host="0.0.0.0:80",
+        )
+        asyncio.run(serve(app, config))
