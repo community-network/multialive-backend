@@ -130,3 +130,4 @@ async def update_server(mainDb, servers: list[str], group_id: str, empty_space: 
             del unused_seeders[0]
 
     await update_seeding(mainDb, group_id, used_seeders)
+    return used_seeders, seeders
