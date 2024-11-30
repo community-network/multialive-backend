@@ -6,7 +6,7 @@ from quart import Quart
 from threading import Thread
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
-from multialive import get_seeding_groups, update_server
+from multialive.multialive import get_seeding_groups, update_server
 
 
 while_is_running = True
