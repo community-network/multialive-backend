@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["iiTzArcur <zefanjaj@gmail.com>"]
 readme = "README.md"
+packages = [{ include = "multialive" }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
